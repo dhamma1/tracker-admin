@@ -6,6 +6,8 @@ var session = require("express-session");
 var env = require("dotenv").config();
 var models = require("./app/models");
 var exphbs = require("express-handlebars");
+var SequelizeStore = require("connect-session-sequelize")(session.Store);
+
 app.use(
   express.urlencoded({
     extended: true,
@@ -16,20 +18,22 @@ app.use(express.json());
 // For Passport
 app.use(
   session({
-    secret: "keyboard cat",
-    resave: true,
+    secret: "some secret message",
+    resave: false,
     saveUninitialized: true,
+    store: new SequelizeStore({
+      db: models.sequelize,
+    }),
   }),
 ); // session secret
 
 app.use(passport.initialize());
-
 app.use(passport.session()); // persistent login sessions
 //STYLING
 app.use(express.static(path.join(__dirname, "/app/public")));
 
 app.get("/", function (req, res) {
-  res.send("Welcome to Passport with Sequelize");
+  res.send("Welcome to Tracker API Project");
 });
 
 //For Handlebars
@@ -58,10 +62,15 @@ models.sequelize
 
 //Routes
 var authRoute = require("./app/routes/auth.js")(app, passport);
-var projectRoute = require("./app/routes/project.js")(app);
+var projectRoute = require("./app/routes/project.js");
+
+app.use("/projects", isLoggedIn);
+app.use("/projects", projectRoute);
 
 function isLoggedIn(req, res, next) {
+  console.log("isLoggedIn - " + req.originalUrl + "->" + req.session.returnTo);
   if (req.isAuthenticated()) return next();
+  req.session.returnTo = req.originalUrl;
   res.redirect("/signin");
 }
 
